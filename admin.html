@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bendito Día - Administración</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: #f5f5f5;
+            font-family: Arial, sans-serif;
+        }
+
+        .contenedor {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .tarjeta {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            padding: 13px;
+            margin-top: 12px;
+            border: none;
+            border-radius: 8px;
+            background: #222;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        #panel {
+            display: none;
+        }
+
+        #estado {
+            margin-top: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        #imagenActual {
+            width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            margin-top: 15px;
+            border-radius: 10px;
+        }
+
+        .cerrar {
+            background: #777;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="contenedor">
+
+    <h1>Bendito Día</h1>
+
+    <!-- LOGIN -->
+
+    <div id="login" class="tarjeta">
+
+        <h2>Acceso privado</h2>
+
+        <input
+            type="email"
+            id="email"
+            placeholder="Correo"
+        >
+
+        <input
+            type="password"
+            id="password"
+            placeholder="Contraseña"
+        >
+
+        <button id="btnLogin">
+            Ingresar
+        </button>
+
+        <p id="loginMensaje"></p>
+
+    </div>
+
+
+    <!-- PANEL -->
+
+    <div id="panel">
+
+        <div class="tarjeta">
+
+            <h2>Subir nueva imagen</h2>
+
+            <input
+                type="file"
+                id="archivo"
+                accept="image/*"
+            >
+
+            <button id="btnSubir">
+                Publicar nueva imagen
+            </button>
+
+            <p id="estado"></p>
+
+        </div>
+
+
+        <div class="tarjeta">
+
+            <h2>Imagen actual</h2>
+
+            <img
+                id="imagenActual"
+                alt="Imagen actual"
+            >
+
+        </div>
+
+
+        <div class="tarjeta">
+
+            <button class="cerrar" id="btnCerrar">
+                Cerrar sesión
+            </button>
+        </div>
+
+    </div>
+
+</div>
+
+
+<script type="module">
+
+    import {
+        createClient
+    } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+
+    const SUPABASE_URL =
+        'https://jjkymtwuswoymtvjlcmu.supabase.co';
+
+    const SUPABASE_KEY =
+        'sb_publishable_aLwR4m02kg0Cfy2ldRvlQQ_nmoyR1hq';
+
+
+    const supabase = createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+    );
+
+
+    const login = document.getElementById('login');
+    const panel = document.getElementById('panel');
+
+    const email = document.getElementById('email');
+    const password = document.getElementById('password');
+
+    const loginMensaje =
+        document.getElementById('loginMensaje');
+
+    const archivo =
+        document.getElementById('archivo');
+
+    const estado =
+        document.getElementById('estado');
+
+    const imagenActual =
+        document.getElementById('imagenActual');
+
+
+    // COMPROBAR SESIÓN
+
+    async function comprobarSesion() {
+
+        const {
+            data: {
+                session
+            }
+        } = await supabase.auth.getSession();
+
+        if (session) {
+
+            login.style.display = 'none';
+            panel.style.display = 'block';
+
+            cargarImagenActual();
+        }
+    }
+
+
+    // LOGIN
+
+    document
+        .getElementById('btnLogin')
+        .addEventListener('click', async () => {
+
+            loginMensaje.textContent =
+                'Ingresando...';
+
+            const {
+                data,
+                error
+            } = await supabase.auth.signInWithPassword({
+
+                email: email.value,
+
+                password: password.value
+
+            });
+
+
+            if (error) {
+
+                loginMensaje.textContent =
+                    'Correo o contraseña incorrectos.';
+
+                return;
+            }
+
+
+            login.style.display = 'none';
+
+            panel.style.display = 'block';
+
+            cargarImagenActual();
+
+        });
+
+
+    // CARGAR IMAGEN ACTUAL
+
+    async function cargarImagenActual() {
+
+        const {
+            data,
+            error
+        } = await supabase
+            .from('imagen_actual')
+            .select('ruta')
+            .limit(1)
+            .maybeSingle();
+
+
+        if (error || !data) {
+
+            imagenActual.style.display = 'none';
+
+            return;
+        }
+
+
+        const {
+            data: urlData
+        } = supabase
+            .storage
+            .from('imagenes')
+            .getPublicUrl(data.ruta);
+
+
+        imagenActual.src =
+            urlData.publicUrl;
+
+    }
+
+
+    // SUBIR IMAGEN
+
+    document
+        .getElementById('btnSubir')
+        .addEventListener('click', async () => {
+
+            const archivoSeleccionado =
+                archivo.files[0];
+
+
+            if (!archivoSeleccionado) {
+
+                estado.textContent =
+                    'Primero selecciona una imagen.';
+
+                return;
+            }
+
+
+            estado.textContent =
+                'Subiendo imagen...';
+
+
+            // Nombre único para conservar imágenes anteriores
+
+            const extension =
+                archivoSeleccionado.name
+                    .split('.')
+                    .pop();
+
+
+            const nombreArchivo =
+                Date.now() +
+                '-' +
+                Math.random()
+                    .toString(36)
+                    .substring(2) +
+                '.' +
+                extension;
+
+
+            const ruta =
+                nombreArchivo;
+
+
+            // SUBIR A STORAGE
+
+            const {
+                error: errorSubida
+            } = await supabase
+                .storage
+                .from('imagenes')
+                .upload(
+                    ruta,
+                    archivoSeleccionado
+                );
+
+
+            if (errorSubida) {
+
+                console.error(errorSubida);
+
+                estado.textContent =
+                    'No se pudo subir la imagen.';
+
+                return;
+            }
+
+
+            // BUSCAR SI YA EXISTE UNA IMAGEN ACTUAL
+
+            const {
+                data: existente
+            } = await supabase
+                .from('imagen_actual')
+                .select('id')
+                .limit(1)
+                .maybeSingle();
+
+
+            let errorBase;
+
+
+            if (existente) {
+
+                const resultado =
+                    await supabase
+                        .from('imagen_actual')
+                        .update({
+                            ruta: ruta,
+                            creado_en:
+                                new Date().toISOString()
+                        })
+                        .eq('id', existente.id);
+
+                errorBase =
+                    resultado.error;
+
+            } else {
+
+                const resultado =
+                    await supabase
+                        .from('imagen_actual')
+                        .insert({
+                            ruta: ruta
+                        });
+
+                errorBase =
+                    resultado.error;
+            }
+
+
+            if (errorBase) {
+
+                console.error(errorBase);
+
+                estado.textContent =
+                    'La imagen se subió, pero no se pudo publicar.';
+
+                return;
+            }
+
+
+            estado.textContent =
+                '✅ Imagen publicada correctamente.';
+
+
+            archivo.value = '';
+
+            cargarImagenActual();
+
+        });
+
+
+    // CERRAR SESIÓN
+
+    document
+        .getElementById('btnCerrar')
+        .addEventListener('click', async () => {
+
+            await supabase.auth.signOut();
+
+            panel.style.display = 'none';
+
+            login.style.display = 'block';
+
+        });
+
+
+    comprobarSesion();
+
+</script>
+
+</body>
+</html>
