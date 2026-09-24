@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bendito Día</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f5f5f5;
+            font-family: Arial, sans-serif;
+        }
+
+        .contenedor {
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        #imagen {
+            display: none;
+            width: 100%;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 12px;
+        }
+
+        #cargando {
+            color: #555;
+            font-size: 18px;
+        }
+
+        #mensaje {
+            display: none;
+            color: #777;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="contenedor">
+
+        <p id="cargando">Cargando...</p>
+
+        <img id="imagen" alt="Bendito Día">
+
+        <p id="mensaje">
+            En este momento no hay una imagen publicada.
+        </p>
+
+    </div>
+
+    <script type="module">
+
+        import { createClient } 
+        from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+        const SUPABASE_URL = 'https://jjkymtwuswoymtvjlcmu.supabase.co';
+
+        const SUPABASE_KEY = 'sb_publishable_aLwR4m02kg0Cfy2ldRvlQQ_nmoyR1hq';
+
+        const supabase = createClient(
+            SUPABASE_URL,
+            SUPABASE_KEY
+        );
+
+        async function cargarImagen() {
+
+            const cargando = document.getElementById('cargando');
+            const imagen = document.getElementById('imagen');
+            const mensaje = document.getElementById('mensaje');
+
+            try {
+
+                const { data, error } = await supabase
+                    .from('imagen_actual')
+                    .select('ruta')
+                    .limit(1)
+                    .maybeSingle();
+
+                if (error) {
+                    throw error;
+                }
+
+                cargando.style.display = 'none';
+
+                if (!data || !data.ruta) {
+                    mensaje.style.display = 'block';
+                    return;
+                }
+
+                const { data: urlData } = supabase
+                    .storage
+                    .from('imagenes')
+                    .getPublicUrl(data.ruta);
+
+                imagen.src = urlData.publicUrl;
+                imagen.style.display = 'block';
+
+            } catch (error) {
+
+                console.error(error);
+
+                cargando.style.display = 'none';
+                mensaje.style.display = 'block';
+            }
+        }
+
+        cargarImagen();
+
+    </script>
+
+</body>
+</html>
